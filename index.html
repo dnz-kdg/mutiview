@@ -49,6 +49,10 @@
 
   /* Büyütülmüş pane tüm ekranı kaplar, diğerleri arkada çalışmaya devam eder */
   #grid.zoomed .pane { visibility: hidden; }
+  /* Dokunma modu: imleçteki panelde YouTube'un kendi düğmelerine (Reklamı atla vb.) tıklanabilir */
+  body.interact .pane.cursor .hit { display: none; }
+  body.interact .pane.cursor .player, body.interact .pane.cursor iframe { pointer-events: auto; }
+  body.interact .pane.cursor .frame { border-color: #d4ac0d; }
   #grid.zoomed .pane.zoom { visibility: visible; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; z-index: 5; }
 
   /* ---------- İpucu ---------- */
@@ -59,7 +63,7 @@
   }
   #hint.hide { opacity: 0; pointer-events: none; }
   .key { display: inline-block; padding: 1px 8px; border-radius: 4px; background: #333; margin: 0 2px; }
-  .k-red { background: #c0392b; } .k-green { background: #27ae60; } .k-yellow { background: #d4ac0d; color: #000; }
+  .k-red { background: #c0392b; } .k-green { background: #27ae60; } .k-yellow { background: #d4ac0d; color: #000; } .k-blue { background: #2e6fd4; }
 
   /* ---------- Menü ---------- */
   #menu {
@@ -101,7 +105,7 @@
 
 <div id="menu" aria-hidden="true">
   <div class="sheet">
-    <h1>Multi View · Ayarlar <small style="font-size:16px;color:#9a9a9a">v0.4</small></h1>
+    <h1>Multi View · Ayarlar <small style="font-size:16px;color:#9a9a9a">v0.5</small></h1>
     <h2>Düzen</h2>
     <div class="row" id="layouts"></div>
     <h2>Kaynaklar</h2>
@@ -119,6 +123,7 @@
       <span class="key">OK</span> sesi bu panele al (tekrar basınca büyüt / küçült) ·
       <span class="key">1–9</span> doğrudan o panelin sesi ·
       <span class="key k-red">Kırmızı</span> düzeni değiştir ·
+      <span class="key k-blue">Mavi</span> dokunma modu (imleçle "Reklamı atla"ya tıkla) ·
       <span class="key k-green">Yeşil</span> büyüt / küçült ·
       <span class="key k-yellow">Sarı</span> veya <span class="key">Geri</span> bu menü
     </p>
@@ -352,7 +357,20 @@ window.onerror = function (msg, src, line) {
           videoId: src.channel ? undefined : src.id,
           playerVars: src.channel ? undefined : vars,
           events: {
-            onReady: function (e) { api = e.target; api.playVideo(); apply(); },
+            onReady: function (e) {
+              api = e.target; api.playVideo(); apply();
+              // Reklam bitince ya da yayın kesilince oynatıcı duraklı kalabiliyor; 15 sn oynamıyorsa yeniden başlat
+              var idle = 0;
+              var watch = setInterval(function () {
+                if (dead) { clearInterval(watch); return; }
+                var st = -1;
+                try { st = api.getPlayerState(); } catch (err) {}
+                if (st === 1 || st === 3) { idle = 0; return; }
+                idle += 5;
+                if (idle >= 15) { idle = 0; try { api.playVideo(); } catch (err) {} }
+              }, 5000);
+              cleanup = function () { clearInterval(watch); };
+            },
             onStateChange: function (e) { if (e.data === 1) { rawMsg(''); started(); } },
             onError: function (e) { showMsg(YT_ERRORS[e.data] || ('YouTube hatası: ' + e.data)); }
           }
@@ -540,6 +558,13 @@ window.onerror = function (msg, src, line) {
     return true;
   }
 
+  function toggleInteract() {
+    var on = !document.body.classList.contains('interact');
+    document.body.classList.toggle('interact', on);
+    showHint(on ? 'Dokunma modu: imleçle panelin içine tıklayabilirsin (ör. <b>Reklamı atla</b>) · çıkmak için <span class="key k-blue">Mavi</span>'
+                : 'Dokunma modu kapandı', on ? 0 : 1500);
+  }
+
   // ---------- Etiketler ve ipucu ----------
   var labelTimer = null;
   function flashLabels() {
@@ -725,6 +750,7 @@ window.onerror = function (msg, src, line) {
       if (zoomed >= 0) toggleZoom(zoomed); else openMenu();
     }
     else if (k === KEY.YELLOW || k === 77 /* M */) openMenu();
+    else if (k === KEY.BLUE || k === 73 /* I */) toggleInteract();
     else handled = false;
     if (handled) e.preventDefault();
   });

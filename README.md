@@ -29,6 +29,7 @@ Menüdeki **Varsayılan kanallar** düğmesi kutuları hazır listeyle doldurur.
 - **1–9:** sesi doğrudan o panele alır.
 - **Kırmızı:** düzeni değiştirir.
 - **Yeşil:** paneli büyütür ya da küçültür.
+- **Mavi:** dokunma modu. İmleçteki panelde Magic Remote ile YouTube düğmelerine (ör. "Reklamı atla") tıklanabilir. Tekrar basınca kapanır.
 - **Sarı / Geri:** ayarlar menüsünü açar. Panel büyütülmüşse önce küçültür.
 - Magic Remote imleciyle panele tıklamak da sesi o panele alır.
 
