@@ -6,58 +6,50 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Multi View</title>
 <style>
-  :root {
-    --bg: #000;
-    --fg: #f2f2f2;
-    --muted: #9a9a9a;
-    --accent: #3d8bff;
-    --audio: #2ecc71;
-    --panel: rgba(18, 18, 22, .96);
-    --line: #333;
-  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; height: 100%; overflow: hidden;
-    background: var(--bg); color: var(--fg);
+    background: #000; color: #f2f2f2;
     font-family: "LG Smart UI", "Segoe UI", Roboto, Arial, sans-serif;
   }
 
   /* ---------- Grid ---------- */
   #grid {
-    position: fixed; inset: 0;
-    display: grid; gap: 2px; background: #111;
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    background: #111;
   }
-  .pane { position: relative; background: #000; min-width: 0; min-height: 0; overflow: hidden; }
+  .pane { position: absolute; background: #000; overflow: hidden; border: 1px solid #111; }
   .pane .player, .pane iframe {
-    position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; border: 0;
     pointer-events: none;            /* kumanda odağı iframe'e kaçmasın */
   }
-  .pane .hit { position: absolute; inset: 0; z-index: 2; }
+  .pane .hit { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 2; }
   .pane .frame {
-    position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 3; pointer-events: none;
     border: 4px solid transparent; transition: border-color .15s;
   }
-  .pane.cursor .frame { border-color: var(--accent); }
-  .pane.audio .frame { box-shadow: inset 0 0 0 2px var(--audio); }
-  .pane.cursor.audio .frame { border-color: var(--audio); }
+  .pane.cursor .frame { border-color: #3d8bff; }
+  .pane.audio .frame { box-shadow: inset 0 0 0 2px #2ecc71; }
+  .pane.cursor.audio .frame { border-color: #2ecc71; }
   .pane .label {
     position: absolute; left: 12px; top: 12px; z-index: 4; pointer-events: none;
     background: rgba(0,0,0,.65); padding: 6px 12px; border-radius: 6px;
-    font-size: 20px; display: flex; gap: 8px; align-items: center;
+    font-size: 20px; white-space: nowrap;
     opacity: 0; transition: opacity .3s;
   }
   body.show-labels .pane .label, .pane.audio .label.always { opacity: 1; }
-  .pane .num { color: var(--muted); }
-  .pane .spk { display: none; color: var(--audio); }
+  .pane .num { color: #9a9a9a; margin-right: 8px; }
+  .pane .spk { margin-left: 8px; }
+  .pane .spk { display: none; color: #2ecc71; }
   .pane.audio .spk { display: inline; }
   .pane .msg {
-    position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center;
-    text-align: center; padding: 24px; color: var(--muted); font-size: 22px;
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; color: #9a9a9a; font-size: 22px;
   }
 
   /* Büyütülmüş pane tüm ekranı kaplar, diğerleri arkada çalışmaya devam eder */
   #grid.zoomed .pane { visibility: hidden; }
-  #grid.zoomed .pane.zoom { visibility: visible; grid-area: 1 / 1 / -1 / -1 !important; z-index: 5; }
+  #grid.zoomed .pane.zoom { visibility: visible; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; z-index: 5; }
 
   /* ---------- İpucu ---------- */
   #hint {
@@ -71,31 +63,35 @@
 
   /* ---------- Menü ---------- */
   #menu {
-    position: fixed; inset: 0; z-index: 30; display: none;
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 30; display: none;
     background: rgba(0,0,0,.55);
   }
   #menu.open { display: block; }
   #menu .sheet {
-    position: absolute; right: 0; top: 0; bottom: 0; width: min(900px, 100%);
-    background: var(--panel); padding: 36px 44px; overflow-y: auto;
+    position: absolute; right: 0; top: 0; bottom: 0; width: 900px; max-width: 100%;
+    background: rgba(18, 18, 22, .96); padding: 36px 44px; overflow-y: auto;
   }
   #menu h1 { margin: 0 0 24px; font-size: 34px; font-weight: 600; }
-  #menu h2 { margin: 28px 0 12px; font-size: 22px; color: var(--muted); font-weight: 500; }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  #menu h2 { margin: 28px 0 12px; font-size: 22px; color: #9a9a9a; font-weight: 500; }
+  .row { display: flex; flex-wrap: wrap; margin: -6px; }
+  .row > * { margin: 6px; }
   .btn {
-    font: inherit; font-size: 22px; color: var(--fg); background: #222; border: 2px solid var(--line);
+    font: inherit; font-size: 22px; color: #f2f2f2; background: #222; border: 2px solid #333;
     padding: 10px 22px; border-radius: 8px; cursor: pointer;
   }
-  .btn.on { background: var(--accent); border-color: var(--accent); }
-  .btn:focus, .slot input:focus { outline: none; border-color: #fff; box-shadow: 0 0 0 3px var(--accent); }
-  .slot { display: grid; grid-template-columns: 34px 220px 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
-  .slot .n { color: var(--muted); font-size: 22px; text-align: right; }
+  .btn.on { background: #3d8bff; border-color: #3d8bff; }
+  .btn:focus, .slot input:focus { outline: none; border-color: #fff; box-shadow: 0 0 0 3px #3d8bff; }
+  .slot { display: flex; align-items: center; margin-bottom: 10px; }
+  .slot .n { width: 34px; flex: none; margin-right: 10px; }
+  .slot .name { width: 220px; flex: none; margin-right: 10px; }
+  .slot .src { flex: 1; }
+  .slot .n { color: #9a9a9a; font-size: 22px; text-align: right; }
   .slot input {
-    font: inherit; font-size: 20px; color: var(--fg); background: #111; border: 2px solid var(--line);
+    font: inherit; font-size: 20px; color: #f2f2f2; background: #111; border: 2px solid #333;
     padding: 10px 12px; border-radius: 8px; min-width: 0;
   }
   .slot.off { opacity: .45; }
-  .help { color: var(--muted); font-size: 18px; line-height: 1.5; }
+  .help { color: #9a9a9a; font-size: 18px; line-height: 1.5; }
   .actions { margin-top: 28px; }
 </style>
 </head>
@@ -105,7 +101,7 @@
 
 <div id="menu" aria-hidden="true">
   <div class="sheet">
-    <h1>Multi View · Ayarlar</h1>
+    <h1>Multi View · Ayarlar <small style="font-size:16px;color:#9a9a9a">v0.3</small></h1>
     <h2>Düzen</h2>
     <div class="row" id="layouts"></div>
     <h2>Kaynaklar</h2>
@@ -129,6 +125,17 @@
   </div>
 </div>
 
+<script>
+// Eski webOS sürümleri (Chromium 38–53) için küçük uyumluluk eki ve görünür hata mesajı
+if (window.NodeList && !NodeList.prototype.forEach) NodeList.prototype.forEach = Array.prototype.forEach;
+window.onerror = function (msg, src, line) {
+  var d = document.getElementById('err') || document.createElement('div');
+  d.id = 'err';
+  d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99;background:#a00;color:#fff;font:20px Arial;padding:12px';
+  d.textContent = 'Hata: ' + msg + ' (satır ' + line + ')';
+  document.body.appendChild(d);
+};
+</script>
 <script>
 (function () {
   'use strict';
@@ -411,8 +418,6 @@
     grid.classList.remove('zoomed');
 
     var L = LAYOUTS[state.layout];
-    grid.style.gridTemplateColumns = 'repeat(' + L.cols + ', 1fr)';
-    grid.style.gridTemplateRows = 'repeat(' + L.rows + ', 1fr)';
     if (cursor >= L.cells.length) cursor = 0;
     if (state.audio >= L.cells.length) state.audio = 0;
 
@@ -420,7 +425,11 @@
       var slot = state.slots[i];
       var pane = document.createElement('div');
       pane.className = 'pane';
-      pane.style.gridArea = c[1] + ' / ' + c[0] + ' / span ' + c[3] + ' / span ' + c[2];
+      // CSS Grid yerine yüzdelik mutlak konum: eski TV tarayıcılarında da çalışır
+      pane.style.left = ((c[0] - 1) / L.cols * 100) + '%';
+      pane.style.top = ((c[1] - 1) / L.rows * 100) + '%';
+      pane.style.width = (c[2] / L.cols * 100) + '%';
+      pane.style.height = (c[3] / L.rows * 100) + '%';
 
       var mount = document.createElement('div');
       var msg = document.createElement('div');
