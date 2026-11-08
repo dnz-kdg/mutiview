@@ -105,7 +105,7 @@
 
 <div id="menu" aria-hidden="true">
   <div class="sheet">
-    <h1>Multi View · Ayarlar <small style="font-size:16px;color:#9a9a9a">v0.5</small></h1>
+    <h1>Multi View · Ayarlar <small style="font-size:16px;color:#9a9a9a">v0.6</small></h1>
     <h2>Düzen</h2>
     <div class="row" id="layouts"></div>
     <h2>Kaynaklar</h2>
@@ -115,6 +115,7 @@
       <button class="btn" id="save">Kaydet</button>
       <button class="btn" id="cancel">Vazgeç</button>
       <button class="btn" id="reset">Varsayılan kanallar</button>
+      <button class="btn" id="ytlogin">YouTube'a giriş yap</button>
       <button class="btn" id="exit">Uygulamadan çık</button>
     </div>
     <h2>Kumanda</h2>
@@ -680,6 +681,12 @@ window.onerror = function (msg, src, line) {
   document.getElementById('save').addEventListener('click', function () { closeMenu(true); });
   document.getElementById('cancel').addEventListener('click', function () { closeMenu(false); });
   document.getElementById('exit').addEventListener('click', exitApp);
+  // Embed'ler youtube.com oturumunu kullanır: Premium hesapla giriş yapılmışsa reklam gelmez.
+  // Girişten sonra uygulama kapatılıp açılınca Multi View'a dönülür.
+  document.getElementById('ytlogin').addEventListener('click', function () {
+    location.href = 'https://accounts.google.com/ServiceLogin?service=youtube&continue=' +
+      encodeURIComponent('https://www.youtube.com/');
+  });
   document.getElementById('reset').addEventListener('click', function () {
     slotsEl.querySelectorAll('.slot').forEach(function (row, i) {
       var d = DEFAULT_SLOTS[i] || { name: '', src: '' };

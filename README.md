@@ -22,6 +22,13 @@ Sayfa mutlaka http(s) üzerinden açılmalı. Dosyaya çift tıklayarak (`file:/
 
 Menüdeki **Varsayılan kanallar** düğmesi kutuları hazır listeyle doldurur.
 
+## YouTube Premium (reklamsız)
+
+Embed'ler, aynı tarayıcıda youtube.com'a giriş yapılmış hesabı kullanır. Premium hesapla giriş yapılmışsa reklam gelmez.
+
+- **Bilgisayarda:** aynı tarayıcıda youtube.com'a Premium hesabınla giriş yapman yeterli.
+- **TV'de:** menüdeki **YouTube'a giriş yap** düğmesine bas ve Google girişini tamamla. Ardından uygulamayı kapatıp yeniden aç. Google bazı uygulama içi tarayıcılarda girişi engelleyebiliyor, bu adım TV'de çalışmayabilir.
+
 ## Kumanda
 
 - **Ok tuşları:** paneller arasında gezer (mavi çerçeve).
