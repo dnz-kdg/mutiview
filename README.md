@@ -13,6 +13,12 @@ YouTube ve Twitch canlı yayınlarını aynı ekranda 1, 2, 4, 1+5, 8 veya 1+7 b
 
 Sayfa mutlaka http(s) üzerinden açılmalı. Dosyaya çift tıklayarak (`file://`) açınca YouTube **Hata 153** verir. Bilgisayarda yerel deneme için: `python -m http.server 8000` → `http://localhost:8000`.
 
+## Kaynak nasıl yazılır
+
+- **YouTube kanal kimliği (önerilen):** `UC` ile başlayan 24 karakterlik kimlik ya da `youtube.com/channel/UC...` bağlantısı. Kanalın o anki canlı yayınını açar. Kanal yayını yenilese de çalışmaya devam eder. Kimliği bulmak için kanal sayfasında açıklamaya tıkla, en alttaki **Kanalı paylaş → Kanal kimliğini kopyala** adımını izle.
+- **YouTube video kimliği ya da bağlantısı:** Tek bir yayını açar. Kanal yayını yeniden başlatınca kimlik değişir, panel de çalışmaz hale gelir.
+- **Twitch:** `twitch:kanaladı` ya da `twitch.tv/kanaladı`.
+
 ## Kumanda
 
 - **Ok tuşları:** paneller arasında gezer (mavi çerçeve).
@@ -48,6 +54,6 @@ Sayfada yapılan değişiklikler GitHub Pages'e gelince TV'de de görünür. Pak
 - **Aynı anda kaç video:** TV'nin donanım video çözücüsü sınırlı. 2 bölme rahat çalışmalı, 4 bölme muhtemelen çalışır, 8 bölme çoğu TV'de takılabilir.
 - **Kalite seçilemiyor:** YouTube kalite seçimini kendisi yapıyor; API artık kalite ayarlamaya izin vermiyor.
 - **Embed kapalı yayınlar:** Bazı kanallar başka sitelerde oynatmayı kapatıyor. Bu panellerde hata mesajı görünür.
-- **Kanal kimlikleri eskiyebilir:** Varsayılan kanallar multitv projesinden alındı ve YouTube canlı yayın kimlikleri zamanla değişiyor.
+- **Video kimlikleri eskiyebilir:** Varsayılan kanallar multitv projesinden alınmış video kimlikleri ve zamanla değişiyorlar. Kalıcı olması için kanal kimliği kullan.
 - **Netflix:** Netflix ve diğer DRM'li servisler bu yöntemle gösterilemez.
 - **Diğer bağlantılar:** Ses kontrolü YouTube ve Twitch için var. Başka bir https bağlantısı düz iframe olarak açılır ve kendi sesiyle çalışır.

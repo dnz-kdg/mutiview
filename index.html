@@ -109,7 +109,7 @@
     <h2>Düzen</h2>
     <div class="row" id="layouts"></div>
     <h2>Kaynaklar</h2>
-    <p class="help">YouTube bağlantısı ya da video kimliği, <b>twitch:kanaladı</b> veya twitch.tv bağlantısı yazabilirsin. Boş bıraktığın kutu siyah kalır.</p>
+    <p class="help">YouTube <b>kanal kimliği</b> (UC ile başlar, önerilen: yayın yenilense de çalışır), kanal bağlantısı, video bağlantısı ya da video kimliği, <b>twitch:kanaladı</b> veya twitch.tv bağlantısı yazabilirsin. Boş bıraktığın kutu siyah kalır.</p>
     <div id="slots"></div>
     <div class="row actions">
       <button class="btn" id="save">Kaydet</button>
@@ -135,7 +135,7 @@
   // ---------- Ayarlar ----------
   // Varsayılan kanallar multitv projesinden alındı; YouTube canlı yayın kimlikleri zamanla değişebilir.
   var DEFAULT_SLOTS = [
-    { name: 'NTV',          src: '-RORLrBwJD0' },
+    { name: 'NTV',          src: 'pqq5c6k70kk' },
     { name: 'Habertürk',    src: '8xSMAv3w1Sk' },
     { name: 'Haber Global', src: '6BX-NUzBSp8' },
     { name: 'TRT Haber',    src: 'og4Bl9zD6l8' },
@@ -215,6 +215,11 @@
     if ((m = s.match(/^twitch:([\w]+)$/i)) || (m = s.match(/twitch\.tv\/([\w]+)/i))) {
       return { kind: 'twitch', id: m[1] };
     }
+    // Kanal kimliği (UC...) her zaman kanalın o anki canlı yayınını açar; video kimliği yayın yenilenince değişir
+    if ((m = s.match(/^(UC[\w-]{22})$/)) || (m = s.match(/youtube\.com\/channel\/(UC[\w-]{22})/i)) ||
+        (m = s.match(/live_stream\?channel=(UC[\w-]{22})/i))) {
+      return { kind: 'youtube', channel: m[1], id: m[1] };
+    }
     if ((m = s.match(/^[\w-]{11}$/))) return { kind: 'youtube', id: s };
     if ((m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([\w-]{11})/i))) {
       return { kind: 'youtube', id: m[1] };
@@ -279,16 +284,25 @@
     }
 
     if (src.kind === 'youtube') {
-      var div = document.createElement('div');
+      var vars = { autoplay: 1, mute: 1, playsinline: 1, rel: 0, controls: 0, iv_load_policy: 3 };
+      if (location.origin && location.origin !== 'null') vars.origin = location.origin;
+      var div;
+      if (src.channel) {
+        // IFrame API kanal parametresi almıyor; live_stream iframe'ini kendimiz kurup API'yi ona bağlıyoruz
+        div = document.createElement('iframe');
+        var q = Object.keys(vars).map(function (k) { return k + '=' + encodeURIComponent(vars[k]); }).join('&');
+        div.src = 'https://www.youtube.com/embed/live_stream?channel=' + src.channel + '&enablejsapi=1&' + q;
+        div.allow = 'autoplay; encrypted-media; picture-in-picture';
+      } else {
+        div = document.createElement('div');
+      }
       div.className = 'player';
       mount.appendChild(div);
       loadYouTubeApi().then(function () {
         if (dead) return;
-        var vars = { autoplay: 1, mute: 1, playsinline: 1, rel: 0, controls: 0, iv_load_policy: 3 };
-        if (location.origin && location.origin !== 'null') vars.origin = location.origin;
         new YT.Player(div, {
-          videoId: src.id,
-          playerVars: vars,
+          videoId: src.channel ? undefined : src.id,
+          playerVars: src.channel ? undefined : vars,
           events: {
             onReady: function (e) { api = e.target; api.playVideo(); apply(); },
             onError: function (e) { showMsg(YT_ERRORS[e.data] || ('YouTube hatası: ' + e.data)); }
@@ -500,7 +514,7 @@
     state.slots.forEach(function (s, i) {
       var row = document.createElement('div');
       row.className = 'slot';
-      row.innerHTML = '<span class="n"></span><input class="name" placeholder="Ad"><input class="src" placeholder="YouTube bağlantısı / kimliği veya twitch:kanal">';
+      row.innerHTML = '<span class="n"></span><input class="name" placeholder="Ad"><input class="src" placeholder="YouTube kanal kimliği (UC…), video kimliği veya twitch:kanal">';
       row.querySelector('.n').textContent = i + 1;
       row.querySelector('.name').value = s.name || '';
       row.querySelector('.src').value = s.src || '';
