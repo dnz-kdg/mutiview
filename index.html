@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi View</title>
+<style>
+  :root {
+    --bg: #000;
+    --fg: #f2f2f2;
+    --muted: #9a9a9a;
+    --accent: #3d8bff;
+    --audio: #2ecc71;
+    --panel: rgba(18, 18, 22, .96);
+    --line: #333;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--fg);
+    font-family: "LG Smart UI", "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  /* ---------- Grid ---------- */
+  #grid {
+    position: fixed; inset: 0;
+    display: grid; gap: 2px; background: #111;
+  }
+  .pane { position: relative; background: #000; min-width: 0; min-height: 0; overflow: hidden; }
+  .pane .player, .pane iframe {
+    position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+    pointer-events: none;            /* kumanda odağı iframe'e kaçmasın */
+  }
+  .pane .hit { position: absolute; inset: 0; z-index: 2; }
+  .pane .frame {
+    position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    border: 4px solid transparent; transition: border-color .15s;
+  }
+  .pane.cursor .frame { border-color: var(--accent); }
+  .pane.audio .frame { box-shadow: inset 0 0 0 2px var(--audio); }
+  .pane.cursor.audio .frame { border-color: var(--audio); }
+  .pane .label {
+    position: absolute; left: 12px; top: 12px; z-index: 4; pointer-events: none;
+    background: rgba(0,0,0,.65); padding: 6px 12px; border-radius: 6px;
+    font-size: 20px; display: flex; gap: 8px; align-items: center;
+    opacity: 0; transition: opacity .3s;
+  }
+  body.show-labels .pane .label, .pane.audio .label.always { opacity: 1; }
+  .pane .num { color: var(--muted); }
+  .pane .spk { display: none; color: var(--audio); }
+  .pane.audio .spk { display: inline; }
+  .pane .msg {
+    position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; color: var(--muted); font-size: 22px;
+  }
+
+  /* Büyütülmüş pane tüm ekranı kaplar, diğerleri arkada çalışmaya devam eder */
+  #grid.zoomed .pane { visibility: hidden; }
+  #grid.zoomed .pane.zoom { visibility: visible; grid-area: 1 / 1 / -1 / -1 !important; z-index: 5; }
+
+  /* ---------- İpucu ---------- */
+  #hint {
+    position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 20;
+    background: rgba(0,0,0,.8); padding: 12px 22px; border-radius: 10px; font-size: 20px;
+    transition: opacity .4s; white-space: nowrap;
+  }
+  #hint.hide { opacity: 0; pointer-events: none; }
+  .key { display: inline-block; padding: 1px 8px; border-radius: 4px; background: #333; margin: 0 2px; }
+  .k-red { background: #c0392b; } .k-green { background: #27ae60; } .k-yellow { background: #d4ac0d; color: #000; }
+
+  /* ---------- Menü ---------- */
+  #menu {
+    position: fixed; inset: 0; z-index: 30; display: none;
+    background: rgba(0,0,0,.55);
+  }
+  #menu.open { display: block; }
+  #menu .sheet {
+    position: absolute; right: 0; top: 0; bottom: 0; width: min(900px, 100%);
+    background: var(--panel); padding: 36px 44px; overflow-y: auto;
+  }
+  #menu h1 { margin: 0 0 24px; font-size: 34px; font-weight: 600; }
+  #menu h2 { margin: 28px 0 12px; font-size: 22px; color: var(--muted); font-weight: 500; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    font: inherit; font-size: 22px; color: var(--fg); background: #222; border: 2px solid var(--line);
+    padding: 10px 22px; border-radius: 8px; cursor: pointer;
+  }
+  .btn.on { background: var(--accent); border-color: var(--accent); }
+  .btn:focus, .slot input:focus { outline: none; border-color: #fff; box-shadow: 0 0 0 3px var(--accent); }
+  .slot { display: grid; grid-template-columns: 34px 220px 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .slot .n { color: var(--muted); font-size: 22px; text-align: right; }
+  .slot input {
+    font: inherit; font-size: 20px; color: var(--fg); background: #111; border: 2px solid var(--line);
+    padding: 10px 12px; border-radius: 8px; min-width: 0;
+  }
+  .slot.off { opacity: .45; }
+  .help { color: var(--muted); font-size: 18px; line-height: 1.5; }
+  .actions { margin-top: 28px; }
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<div id="hint" class="hide"></div>
+
+<div id="menu" aria-hidden="true">
+  <div class="sheet">
+    <h1>Multi View · Ayarlar</h1>
+    <h2>Düzen</h2>
+    <div class="row" id="layouts"></div>
+    <h2>Kaynaklar</h2>
+    <p class="help">YouTube bağlantısı ya da video kimliği, <b>twitch:kanaladı</b> veya twitch.tv bağlantısı yazabilirsin. Boş bıraktığın kutu siyah kalır.</p>
+    <div id="slots"></div>
+    <div class="row actions">
+      <button class="btn" id="save">Kaydet</button>
+      <button class="btn" id="cancel">Vazgeç</button>
+      <button class="btn" id="exit">Uygulamadan çık</button>
+    </div>
+    <h2>Kumanda</h2>
+    <p class="help">
+      <span class="key">◀ ▲ ▼ ▶</span> paneller arasında gez ·
+      <span class="key">OK</span> sesi bu panele al (tekrar basınca büyüt / küçült) ·
+      <span class="key">1–8</span> doğrudan o panelin sesi ·
+      <span class="key k-red">Kırmızı</span> düzeni değiştir ·
+      <span class="key k-green">Yeşil</span> büyüt / küçült ·
+      <span class="key k-yellow">Sarı</span> veya <span class="key">Geri</span> bu menü
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Ayarlar ----------
+  // Varsayılan kanallar multitv projesinden alındı; YouTube canlı yayın kimlikleri zamanla değişebilir.
+  var DEFAULT_SLOTS = [
+    { name: 'NTV',          src: '-RORLrBwJD0' },
+    { name: 'Habertürk',    src: '8xSMAv3w1Sk' },
+    { name: 'Haber Global', src: '6BX-NUzBSp8' },
+    { name: 'TRT Haber',    src: 'og4Bl9zD6l8' },
+    { name: 'Halk TV',      src: '-HJwrahoMsQ' },
+    { name: 'Sözcü TV',     src: 'ztmY_cCtUl0' },
+    { name: 'TELE 1',       src: 'cKRg0a8yArE' },
+    { name: 'TV 100',       src: 'P5BOJKmWaaI' }
+  ];
+  var MAX_SLOTS = 8;
+
+  // Her hücre: [sütun, satır, sütunGenişliği, satırYüksekliği]
+  var LAYOUTS = {
+    '1':   { label: '1',     cols: 1, rows: 1, cells: [[1,1,1,1]] },
+    '2':   { label: '2',     cols: 2, rows: 1, cells: [[1,1,1,1],[2,1,1,1]] },
+    '4':   { label: '4',     cols: 2, rows: 2, cells: [[1,1,1,1],[2,1,1,1],[1,2,1,1],[2,2,1,1]] },
+    '1+5': { label: '1 + 5', cols: 3, rows: 3, cells: [[1,1,2,2],[3,1,1,1],[3,2,1,1],[1,3,1,1],[2,3,1,1],[3,3,1,1]] },
+    '8':   { label: '8',     cols: 4, rows: 2, cells: [[1,1,1,1],[2,1,1,1],[3,1,1,1],[4,1,1,1],[1,2,1,1],[2,2,1,1],[3,2,1,1],[4,2,1,1]] },
+    '1+7': { label: '1 + 7', cols: 4, rows: 4, cells: [[1,1,3,3],[4,1,1,1],[4,2,1,1],[4,3,1,1],[1,4,1,1],[2,4,1,1],[3,4,1,1],[4,4,1,1]] }
+  };
+  var LAYOUT_ORDER = ['1', '2', '4', '1+5', '8', '1+7'];
+
+  var KEY = {
+    LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13,
+    BACK: 461, ESC: 27, BACKSPACE: 8,
+    RED: 403, GREEN: 404, YELLOW: 405, BLUE: 406
+  };
+
+  var STORE_KEY = 'multiview:v1';
+
+  // ---------- Durum ----------
+  var state = loadState();
+  var cursor = state.audio;
+  var zoomed = -1;
+  var audioUnlocked = false;   // tarayıcılar ilk kullanıcı etkileşiminden önce sesli oynatmaya izin vermez
+  var players = [];
+
+  function loadState() {
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) {}
+    s = s || { layout: '4', slots: DEFAULT_SLOTS, audio: 0 };
+    var fromHash = parseHash();
+    if (fromHash) s = fromHash;
+    if (!LAYOUTS[s.layout]) s.layout = '4';
+    var slots = [];
+    for (var i = 0; i < MAX_SLOTS; i++) slots.push(s.slots && s.slots[i] ? s.slots[i] : { name: '', src: '' });
+    s.slots = slots;
+    s.audio = Math.min(s.audio || 0, LAYOUTS[s.layout].cells.length - 1);
+    return s;
+  }
+
+  function saveState() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  // Bilgisayarda hazırlanan bir düzeni TV'ye bağlantıyla taşımak için:
+  // index.html#layout=4&src=VIDEOID|twitch:kanal|https://youtu.be/...
+  function parseHash() {
+    if (!location.hash || location.hash.length < 2) return null;
+    var params = {};
+    location.hash.slice(1).split('&').forEach(function (p) {
+      var i = p.indexOf('=');
+      if (i > 0) params[p.slice(0, i)] = decodeURIComponent(p.slice(i + 1));
+    });
+    if (!params.src) return null;
+    return {
+      layout: params.layout || '4',
+      audio: 0,
+      slots: params.src.split('|').map(function (src) { return { name: '', src: src.trim() }; })
+    };
+  }
+
+  // ---------- Kaynak çözümleme ----------
+  function parseSource(raw) {
+    var s = (raw || '').trim();
+    if (!s) return null;
+    var m;
+    if ((m = s.match(/^twitch:([\w]+)$/i)) || (m = s.match(/twitch\.tv\/([\w]+)/i))) {
+      return { kind: 'twitch', id: m[1] };
+    }
+    if ((m = s.match(/^[\w-]{11}$/))) return { kind: 'youtube', id: s };
+    if ((m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([\w-]{11})/i))) {
+      return { kind: 'youtube', id: m[1] };
+    }
+    if (/^https?:\/\//i.test(s)) return { kind: 'iframe', id: s };
+    return { kind: 'invalid', id: s };
+  }
+
+  // ---------- Oynatıcılar ----------
+  var ytReady = null;
+  function loadYouTubeApi() {
+    if (!ytReady) {
+      ytReady = new Promise(function (resolve) {
+        window.onYouTubeIframeAPIReady = resolve;
+        var tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      });
+    }
+    return ytReady;
+  }
+
+  var twitchReady = null;
+  function loadTwitchApi() {
+    if (!twitchReady) {
+      twitchReady = new Promise(function (resolve, reject) {
+        var tag = document.createElement('script');
+        tag.src = 'https://player.twitch.tv/js/embed/v1.js';
+        tag.onload = resolve; tag.onerror = reject;
+        document.head.appendChild(tag);
+      });
+    }
+    return twitchReady;
+  }
+
+  var YT_ERRORS = {
+    2: 'Geçersiz video kimliği.',
+    5: 'Bu video HTML5 oynatıcıda açılamıyor.',
+    100: 'Video bulunamadı ya da kaldırılmış.',
+    101: 'Yayıncı bu videonun başka sitelerde oynatılmasını kapatmış.',
+    150: 'Yayıncı bu videonun başka sitelerde oynatılmasını kapatmış.',
+    153: 'YouTube sayfa adresini doğrulayamadı. Uygulamayı https üzerinden açman gerekiyor.'
+  };
+
+  // Her oynatıcı aynı arayüzü sunar: setMuted(bool), destroy()
+  function createPlayer(mount, src, showMsg) {
+    var wantMuted = true, api = null, dead = false;
+    var ctl = {
+      setMuted: function (m) { wantMuted = m; apply(); },
+      destroy: function () { dead = true; try { api && api.destroy && api.destroy(); } catch (e) {} mount.innerHTML = ''; }
+    };
+    function apply() {
+      if (!api || dead) return;
+      try {
+        if (src.kind === 'youtube') {
+          if (wantMuted) api.mute(); else { api.unMute(); api.setVolume(100); }
+        } else if (src.kind === 'twitch') {
+          api.setMuted(wantMuted);
+          if (!wantMuted) api.setVolume(1);
+        }
+      } catch (e) {}
+    }
+
+    if (src.kind === 'youtube') {
+      var div = document.createElement('div');
+      div.className = 'player';
+      mount.appendChild(div);
+      loadYouTubeApi().then(function () {
+        if (dead) return;
+        var vars = { autoplay: 1, mute: 1, playsinline: 1, rel: 0, controls: 0, iv_load_policy: 3 };
+        if (location.origin && location.origin !== 'null') vars.origin = location.origin;
+        new YT.Player(div, {
+          videoId: src.id,
+          playerVars: vars,
+          events: {
+            onReady: function (e) { api = e.target; api.playVideo(); apply(); },
+            onError: function (e) { showMsg(YT_ERRORS[e.data] || ('YouTube hatası: ' + e.data)); }
+          }
+        });
+      });
+    } else if (src.kind === 'twitch') {
+      if (!location.hostname) {
+        showMsg('Twitch, uygulamanın bir alan adından (https) açılmasını istiyor.');
+        return ctl;
+      }
+      var tdiv = document.createElement('div');
+      tdiv.className = 'player';
+      tdiv.id = 'tw-' + Math.random().toString(36).slice(2);
+      mount.appendChild(tdiv);
+      loadTwitchApi().then(function () {
+        if (dead) return;
+        try {
+          var p = new Twitch.Player(tdiv.id, {
+            channel: src.id, parent: [location.hostname],
+            width: '100%', height: '100%', autoplay: true, muted: true
+          });
+          p.addEventListener(Twitch.Player.READY, function () { api = p; apply(); });
+        } catch (e) { showMsg('Twitch oynatıcısı başlatılamadı.'); }
+      }, function () { showMsg('Twitch oynatıcısı yüklenemedi.'); });
+    } else if (src.kind === 'iframe') {
+      // Ses kontrolü olmayan genel gömme; her zaman kendi sesiyle çalışır
+      var f = document.createElement('iframe');
+      f.src = src.id;
+      f.allow = 'autoplay; encrypted-media; fullscreen';
+      mount.appendChild(f);
+    } else {
+      showMsg('Tanınmayan kaynak: ' + src.id);
+    }
+    return ctl;
+  }
+
+  // ---------- Çizim ----------
+  var grid = document.getElementById('grid');
+
+  function render() {
+    players.forEach(function (p) { p && p.destroy(); });
+    players = [];
+    grid.innerHTML = '';
+    zoomed = -1;
+    grid.classList.remove('zoomed');
+
+    var L = LAYOUTS[state.layout];
+    grid.style.gridTemplateColumns = 'repeat(' + L.cols + ', 1fr)';
+    grid.style.gridTemplateRows = 'repeat(' + L.rows + ', 1fr)';
+    if (cursor >= L.cells.length) cursor = 0;
+    if (state.audio >= L.cells.length) state.audio = 0;
+
+    L.cells.forEach(function (c, i) {
+      var slot = state.slots[i];
+      var pane = document.createElement('div');
+      pane.className = 'pane';
+      pane.style.gridArea = c[1] + ' / ' + c[0] + ' / span ' + c[3] + ' / span ' + c[2];
+
+      var mount = document.createElement('div');
+      var msg = document.createElement('div');
+      msg.className = 'msg';
+      var hit = document.createElement('div');
+      hit.className = 'hit';
+      hit.addEventListener('click', function () { var first = unlockAudio(); cursor = i; if (!first || i !== state.audio) selectAudio(i); else applyCursor(); });
+      var frame = document.createElement('div');
+      frame.className = 'frame';
+      var label = document.createElement('div');
+      label.className = 'label';
+      var src = parseSource(slot.src);
+      var title = slot.name || (src ? (src.kind === 'twitch' ? 'Twitch · ' + src.id : src.id) : 'Boş');
+      label.innerHTML = '<span class="num"></span><span class="t"></span><span class="spk">🔊</span>';
+      label.querySelector('.num').textContent = (i + 1);
+      label.querySelector('.t').textContent = title;
+
+      pane.appendChild(mount); pane.appendChild(msg); pane.appendChild(hit);
+      pane.appendChild(frame); pane.appendChild(label);
+      grid.appendChild(pane);
+
+      if (!src) { msg.textContent = 'Boş · ayarlardan kaynak ekle'; players.push(null); return; }
+      players.push(createPlayer(mount, src, function (t) { msg.textContent = t; }));
+    });
+
+    applyAudio();
+    applyCursor();
+    flashLabels();
+  }
+
+  function panes() { return grid.querySelectorAll('.pane'); }
+
+  function applyCursor() {
+    panes().forEach(function (p, i) { p.classList.toggle('cursor', i === cursor); });
+  }
+
+  function applyAudio() {
+    panes().forEach(function (p, i) { p.classList.toggle('audio', i === state.audio); });
+    players.forEach(function (p, i) {
+      if (p) p.setMuted(!audioUnlocked || i !== state.audio);
+    });
+  }
+
+  function selectAudio(i) {
+    if (i < 0 || i >= players.length) return;
+    if (state.audio === i && audioUnlocked) { toggleZoom(i); return; }
+    state.audio = i;
+    saveState();
+    applyAudio();
+    applyCursor();
+    flashLabels();
+  }
+
+  function toggleZoom(i) {
+    var ps = panes();
+    if (zoomed === i || i === undefined) {
+      if (zoomed >= 0) ps[zoomed].classList.remove('zoom');
+      zoomed = -1;
+    } else {
+      if (zoomed >= 0) ps[zoomed].classList.remove('zoom');
+      zoomed = i;
+      ps[i].classList.add('zoom');
+      // Büyütülen panelin sesi de açılsın
+      state.audio = i; saveState(); applyAudio();
+    }
+    grid.classList.toggle('zoomed', zoomed >= 0);
+    applyCursor();
+    flashLabels();
+  }
+
+  // İlk tuş/tıklama sadece sesi açar; true dönerse o tuşun başka işi yapılmaz
+  function unlockAudio() {
+    if (audioUnlocked) return false;
+    audioUnlocked = true;
+    applyAudio();
+    showHint(null);
+    return true;
+  }
+
+  // ---------- Etiketler ve ipucu ----------
+  var labelTimer = null;
+  function flashLabels() {
+    document.body.classList.add('show-labels');
+    clearTimeout(labelTimer);
+    labelTimer = setTimeout(function () { document.body.classList.remove('show-labels'); }, 3000);
+  }
+
+  var hint = document.getElementById('hint');
+  var hintTimer = null;
+  function showHint(html, ms) {
+    clearTimeout(hintTimer);
+    if (!html) { hint.classList.add('hide'); return; }
+    hint.innerHTML = html;
+    hint.classList.remove('hide');
+    if (ms) hintTimer = setTimeout(function () { hint.classList.add('hide'); }, ms);
+  }
+
+  // ---------- Yönlü gezinme ----------
+  // Düzenden bağımsız çalışır: verilen yöndeki en yakın paneli ekrandaki konumlarına göre seçer.
+  function moveCursor(dir) {
+    if (zoomed >= 0) return;
+    var ps = panes();
+    var cur = ps[cursor].getBoundingClientRect();
+    var cx = cur.left + cur.width / 2, cy = cur.top + cur.height / 2;
+    var best = -1, bestScore = Infinity;
+    ps.forEach(function (p, i) {
+      if (i === cursor) return;
+      var r = p.getBoundingClientRect();
+      var x = r.left + r.width / 2, y = r.top + r.height / 2;
+      var dx = x - cx, dy = y - cy, main, side;
+      if (dir === 'left')  { if (r.right > cur.left + 1) return;  main = -dx; side = Math.abs(dy); }
+      if (dir === 'right') { if (r.left < cur.right - 1) return;  main = dx;  side = Math.abs(dy); }
+      if (dir === 'up')    { if (r.bottom > cur.top + 1) return;  main = -dy; side = Math.abs(dx); }
+      if (dir === 'down')  { if (r.top < cur.bottom - 1) return;  main = dy;  side = Math.abs(dx); }
+      var score = main + side * 2;
+      if (score < bestScore) { bestScore = score; best = i; }
+    });
+    if (best >= 0) { cursor = best; applyCursor(); flashLabels(); }
+  }
+
+  function cycleLayout() {
+    var i = LAYOUT_ORDER.indexOf(state.layout);
+    state.layout = LAYOUT_ORDER[(i + 1) % LAYOUT_ORDER.length];
+    saveState();
+    render();
+    showHint('Düzen: <b>' + LAYOUTS[state.layout].label + '</b>', 1500);
+  }
+
+  // ---------- Menü ----------
+  var menu = document.getElementById('menu');
+  var layoutsEl = document.getElementById('layouts');
+  var slotsEl = document.getElementById('slots');
+  var draftLayout = state.layout;
+
+  function openMenu() {
+    draftLayout = state.layout;
+    layoutsEl.innerHTML = '';
+    LAYOUT_ORDER.forEach(function (k) {
+      var b = document.createElement('button');
+      b.className = 'btn' + (k === draftLayout ? ' on' : '');
+      b.textContent = LAYOUTS[k].label;
+      b.dataset.layout = k;
+      b.addEventListener('click', function () {
+        draftLayout = k;
+        layoutsEl.querySelectorAll('.btn').forEach(function (x) { x.classList.toggle('on', x.dataset.layout === k); });
+        markUsedSlots();
+      });
+      layoutsEl.appendChild(b);
+    });
+    slotsEl.innerHTML = '';
+    state.slots.forEach(function (s, i) {
+      var row = document.createElement('div');
+      row.className = 'slot';
+      row.innerHTML = '<span class="n"></span><input class="name" placeholder="Ad"><input class="src" placeholder="YouTube bağlantısı / kimliği veya twitch:kanal">';
+      row.querySelector('.n').textContent = i + 1;
+      row.querySelector('.name').value = s.name || '';
+      row.querySelector('.src').value = s.src || '';
+      slotsEl.appendChild(row);
+    });
+    markUsedSlots();
+    menu.classList.add('open');
+    menu.setAttribute('aria-hidden', 'false');
+    var on = layoutsEl.querySelector('.on');
+    (on || layoutsEl.firstChild).focus();
+  }
+
+  function markUsedSlots() {
+    var n = LAYOUTS[draftLayout].cells.length;
+    slotsEl.querySelectorAll('.slot').forEach(function (row, i) { row.classList.toggle('off', i >= n); });
+  }
+
+  function closeMenu(save) {
+    if (save) {
+      state.layout = draftLayout;
+      state.slots = Array.prototype.map.call(slotsEl.querySelectorAll('.slot'), function (row) {
+        return { name: row.querySelector('.name').value.trim(), src: row.querySelector('.src').value.trim() };
+      });
+      saveState();
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+      render();
+    }
+    menu.classList.remove('open');
+    menu.setAttribute('aria-hidden', 'true');
+    if (document.activeElement) document.activeElement.blur();
+  }
+
+  function exitApp() {
+    if (window.webOS && typeof window.webOS.platformBack === 'function') window.webOS.platformBack();
+    else window.close();
+  }
+
+  document.getElementById('save').addEventListener('click', function () { closeMenu(true); });
+  document.getElementById('cancel').addEventListener('click', function () { closeMenu(false); });
+  document.getElementById('exit').addEventListener('click', exitApp);
+
+  function menuFocusables() {
+    return Array.prototype.slice.call(menu.querySelectorAll('button, input'));
+  }
+
+  function menuKey(e) {
+    var k = e.keyCode, el = document.activeElement;
+    var inText = el && el.tagName === 'INPUT';
+    var list = menuFocusables(), idx = list.indexOf(el);
+    if (k === KEY.BACK || k === KEY.ESC || k === KEY.YELLOW) { closeMenu(false); return true; }
+    if (k === KEY.UP || k === KEY.DOWN) {
+      var step = k === KEY.DOWN ? 1 : -1;
+      // Düzen düğmeleri tek satır; yukarı/aşağı bu satırı atlar
+      var next = idx + step;
+      if (el && el.parentNode === layoutsEl) {
+        next = step > 0 ? list.indexOf(slotsEl.querySelector('input')) : idx;
+      } else if (inText && el.classList.contains('src') && step < 0) {
+        next = idx - 2;
+      } else if (inText && el.classList.contains('name') && step > 0) {
+        next = idx + 2;
+      } else if (inText && step < 0) {
+        next = idx - 2;
+        if (next < list.indexOf(slotsEl.querySelector('input'))) next = list.indexOf(layoutsEl.querySelector('.on') || layoutsEl.firstChild);
+      }
+      if (list[next]) list[next].focus();
+      return true;
+    }
+    if ((k === KEY.LEFT || k === KEY.RIGHT) && !inText) {
+      var n = idx + (k === KEY.RIGHT ? 1 : -1);
+      if (list[n] && list[n].parentNode === el.parentNode) list[n].focus();
+      return true;
+    }
+    if ((k === KEY.LEFT || k === KEY.RIGHT) && inText) {
+      // İmleç kutunun başındaysa / sonundaysa yandaki kutuya geç
+      var atStart = el.selectionStart === 0 && el.selectionEnd === 0;
+      var atEnd = el.selectionStart === el.value.length;
+      if (k === KEY.LEFT && atStart && el.classList.contains('src')) { list[idx - 1].focus(); return true; }
+      if (k === KEY.RIGHT && atEnd && el.classList.contains('name')) { list[idx + 1].focus(); return true; }
+    }
+    return false;
+  }
+
+  // ---------- Tuşlar ----------
+  document.addEventListener('keydown', function (e) {
+    var k = e.keyCode;
+    if (menu.classList.contains('open')) {
+      if (menuKey(e)) e.preventDefault();
+      return;
+    }
+    if (unlockAudio() && k === KEY.OK) { e.preventDefault(); return; }
+    var handled = true;
+    if (k === KEY.LEFT) moveCursor('left');
+    else if (k === KEY.RIGHT) moveCursor('right');
+    else if (k === KEY.UP) moveCursor('up');
+    else if (k === KEY.DOWN) moveCursor('down');
+    else if (k === KEY.OK) selectAudio(cursor);
+    else if (k >= 49 && k <= 56) { cursor = k - 49; selectAudio(cursor); }
+    else if (k === KEY.RED || k === 76 /* L */) cycleLayout();
+    else if (k === KEY.GREEN || k === 70 /* F */) toggleZoom(zoomed >= 0 ? zoomed : cursor);
+    else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) {
+      if (zoomed >= 0) toggleZoom(zoomed); else openMenu();
+    }
+    else if (k === KEY.YELLOW || k === 77 /* M */) openMenu();
+    else handled = false;
+    if (handled) e.preventDefault();
+  });
+
+  // Fare/Magic Remote imleci panele gelince odak da gelsin
+  grid.addEventListener('mousemove', function (e) {
+    var ps = panes();
+    for (var i = 0; i < ps.length; i++) {
+      if (ps[i].contains(e.target) && i !== cursor) { cursor = i; applyCursor(); flashLabels(); break; }
+    }
+  });
+
+  // Bir iframe odağı çalarsa geri al ki kumanda tuşları bize gelsin
+  window.addEventListener('blur', function () {
+    setTimeout(function () { if (document.activeElement && document.activeElement.tagName === 'IFRAME') document.activeElement.blur(); window.focus(); }, 0);
+  });
+
+  render();
+  if (location.protocol === 'file:') {
+    showHint('Sayfa dosyadan (file://) açıldı. YouTube bu durumda <b>Hata 153</b> verir; sayfayı http/https adresinden aç.');
+  } else showHint('Sesi açmak için bir tuşa bas · <span class="key k-yellow">Sarı</span> / <span class="key">Geri</span> ayarlar · <span class="key k-red">Kırmızı</span> düzen');
+})();
+</script>
+</body>
+</html>

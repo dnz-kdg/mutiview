@@ -1,0 +1,14 @@
+{
+  "id": "com.deniz.multiview",
+  "version": "0.2.0",
+  "vendor": "deniz",
+  "type": "web",
+  "main": "index.html",
+  "title": "Multi View",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#000000",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
+}
