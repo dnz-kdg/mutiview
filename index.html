@@ -105,7 +105,7 @@
 
 <div id="menu" aria-hidden="true">
   <div class="sheet">
-    <h1>Multi View · Ayarlar <small style="font-size:16px;color:#9a9a9a">v0.6</small></h1>
+    <h1>Multi View · Ayarlar <small style="font-size:16px;color:#9a9a9a">v0.7</small></h1>
     <h2>Düzen</h2>
     <div class="row" id="layouts"></div>
     <h2>Kaynaklar</h2>
@@ -116,6 +116,7 @@
       <button class="btn" id="cancel">Vazgeç</button>
       <button class="btn" id="reset">Varsayılan kanallar</button>
       <button class="btn" id="ytlogin">YouTube'a giriş yap</button>
+      <button class="btn" id="lite"></button>
       <button class="btn" id="exit">Uygulamadan çık</button>
     </div>
     <h2>Kumanda</h2>
@@ -210,6 +211,9 @@ window.onerror = function (msg, src, line) {
     for (var i = 0; i < MAX_SLOTS; i++) slots.push(s.slots && s.slots[i] ? s.slots[i] : { name: '', src: '' });
     s.slots = slots;
     s.audio = Math.min(s.audio || 0, LAYOUTS[s.layout].cells.length - 1);
+    // Hafif mod: yalnızca sesi açık panel video oynatır, diğerleri birkaç saniyede bir yenilenen önizleme resmi gösterir.
+    // TV'ler aynı anda genelde tek videoyu akıcı çözebildiği için webOS'ta varsayılan olarak açık.
+    if (typeof s.lite !== 'boolean') s.lite = /Web0S|webOS/i.test(navigator.userAgent);
     return s;
   }
 
@@ -368,11 +372,16 @@ window.onerror = function (msg, src, line) {
                 try { st = api.getPlayerState(); } catch (err) {}
                 if (st === 1 || st === 3) { idle = 0; return; }
                 idle += 5;
-                if (idle >= 15) { idle = 0; try { api.playVideo(); } catch (err) {} }
+                // Sessiz panelleri zorla başlatmıyoruz: TV'de birbirinin çözücüsünü kapıp siyaha düşmelerine yol açıyordu
+                if (idle >= 15 && !wantMuted) { idle = 0; try { api.playVideo(); } catch (err) {} }
               }, 5000);
               cleanup = function () { clearInterval(watch); };
             },
-            onStateChange: function (e) { if (e.data === 1) { rawMsg(''); started(); } },
+            onStateChange: function (e) {
+              if (e.data !== 1) return;
+              rawMsg(''); started();
+              try { var vd = api.getVideoData(); if (vd && vd.video_id) knownVideo[src.id] = vd.video_id; } catch (err) {}
+            },
             onError: function (e) { showMsg(YT_ERRORS[e.data] || ('YouTube hatası: ' + e.data)); }
           }
         });
@@ -435,6 +444,33 @@ window.onerror = function (msg, src, line) {
     return ctl;
   }
 
+  // ---------- Önizleme (hafif mod) ----------
+  var knownVideo = {};   // kanal kimliği -> o an yayındaki video kimliği
+  var PREVIEW_REFRESH = 15000;
+
+  function previewUrl(src) {
+    if (src.kind === 'youtube') {
+      var vid = src.channel ? knownVideo[src.id] : src.id;
+      return vid ? 'https://i.ytimg.com/vi/' + vid + '/hqdefault_live.jpg' : null;
+    }
+    if (src.kind === 'twitch') return 'https://static-cdn.jtvnw.net/previews-ttv/live_user_' + src.id.toLowerCase() + '-640x360.jpg';
+    return null;
+  }
+
+  function mountPreview(mount, msg, src, myRender) {
+    var url = previewUrl(src);
+    msg.textContent = url ? '' : 'Önizleme yok · seçince oynar';
+    if (!url) return;
+    var img = document.createElement('img');
+    img.className = 'player';
+    img.style.objectFit = 'cover';
+    img.onerror = function () { msg.textContent = 'Önizleme yok · seçince oynar'; img.style.display = 'none'; };
+    var load = function () { img.src = url + '?t=' + Date.now(); };
+    load();
+    mount.appendChild(img);
+    var timer = setInterval(function () { if (myRender !== renderId) clearInterval(timer); else load(); }, PREVIEW_REFRESH);
+  }
+
   // ---------- Çizim ----------
   var grid = document.getElementById('grid');
 
@@ -487,6 +523,7 @@ window.onerror = function (msg, src, line) {
 
       players.push(null);
       if (!src) { msg.textContent = 'Boş · ayarlardan kaynak ekle'; return; }
+      if (state.lite && i !== state.audio && L.cells.length > 1) { mountPreview(mount, msg, src, myRender); return; }
       msg.textContent = 'Sırada…';
       queue.push({ i: i, run: function (done) {
         msg.textContent = 'Yükleniyor…';
@@ -528,6 +565,7 @@ window.onerror = function (msg, src, line) {
     if (state.audio === i && audioUnlocked) { toggleZoom(i); return; }
     state.audio = i;
     saveState();
+    if (state.lite) { render(); return; }   // hafif modda videoyu yeni seçilen panele taşı
     applyAudio();
     applyCursor();
     flashLabels();
@@ -540,6 +578,7 @@ window.onerror = function (msg, src, line) {
       zoomed = -1;
     } else {
       if (zoomed >= 0) ps[zoomed].classList.remove('zoom');
+      if (state.lite && state.audio !== i) { state.audio = i; saveState(); render(); ps = panes(); }
       zoomed = i;
       ps[i].classList.add('zoom');
       // Büyütülen panelin sesi de açılsın
@@ -623,6 +662,7 @@ window.onerror = function (msg, src, line) {
 
   function openMenu() {
     draftLayout = state.layout;
+    draftLite = state.lite; showLite();
     layoutsEl.innerHTML = '';
     LAYOUT_ORDER.forEach(function (k) {
       var b = document.createElement('button');
@@ -661,6 +701,7 @@ window.onerror = function (msg, src, line) {
   function closeMenu(save) {
     if (save) {
       state.layout = draftLayout;
+      state.lite = draftLite;
       state.slots = Array.prototype.map.call(slotsEl.querySelectorAll('.slot'), function (row) {
         return { name: row.querySelector('.name').value.trim(), src: row.querySelector('.src').value.trim() };
       });
@@ -687,6 +728,10 @@ window.onerror = function (msg, src, line) {
     location.href = 'https://accounts.google.com/ServiceLogin?service=youtube&continue=' +
       encodeURIComponent('https://www.youtube.com/');
   });
+  var liteBtn = document.getElementById('lite');
+  var draftLite = state.lite;
+  function showLite() { liteBtn.textContent = 'Hafif mod: ' + (draftLite ? 'Açık' : 'Kapalı'); liteBtn.classList.toggle('on', draftLite); }
+  liteBtn.addEventListener('click', function () { draftLite = !draftLite; showLite(); });
   document.getElementById('reset').addEventListener('click', function () {
     slotsEl.querySelectorAll('.slot').forEach(function (row, i) {
       var d = DEFAULT_SLOTS[i] || { name: '', src: '' };

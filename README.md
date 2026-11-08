@@ -62,7 +62,7 @@ Sayfada yapılan değişiklikler GitHub Pages'e gelince TV'de de görünür. Pak
 
 ## Bilinen sınırlar
 
-- **Aynı anda kaç video:** TV'nin donanım video çözücüsü sınırlı. 2 bölme rahat çalışmalı, 4 bölme muhtemelen çalışır, 8 bölme çoğu TV'de takılabilir.
+- **Aynı anda kaç video:** TV'nin web motoru aynı anda genelde tek videoyu akıcı oynatabiliyor. Bu yüzden webOS'ta **Hafif mod** varsayılan olarak açık: yalnızca sesi açık panel video oynatır, diğerleri 15 saniyede bir yenilenen önizleme resmi gösterir. OK ile başka bir panel seçince video o panele geçer. Menüden kapatılabilir.
 - **Kalite seçilemiyor:** YouTube kalite seçimini kendisi yapıyor; API artık kalite ayarlamaya izin vermiyor.
 - **Embed kapalı yayınlar:** Bazı kanallar başka sitelerde oynatmayı kapatıyor. Bu panellerde hata mesajı görünür.
 - **Video kimlikleri eskiyebilir:** Varsayılan kanallar multitv projesinden alınmış video kimlikleri ve zamanla değişiyorlar. Kalıcı olması için kanal kimliği kullan.
