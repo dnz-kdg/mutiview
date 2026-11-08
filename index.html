@@ -117,6 +117,7 @@
       <button class="btn" id="reset">Varsayılan kanallar</button>
       <button class="btn" id="ytlogin">YouTube'a giriş yap</button>
       <button class="btn" id="lite"></button>
+      <button class="btn" id="tvmode">Canlı TV (m3u8) modu</button>
       <button class="btn" id="exit">Uygulamadan çık</button>
     </div>
     <h2>Kumanda</h2>
@@ -142,6 +143,10 @@ window.onerror = function (msg, src, line) {
   d.textContent = 'Hata: ' + msg + ' (satır ' + line + ')';
   document.body.appendChild(d);
 };
+</script>
+<script>
+// Son kullanılan mod Canlı TV ise doğrudan oraya geç (TV uygulaması bu sayfayı açar)
+try { if (!location.hash && localStorage.getItem('multiview:mode') === 'tv') location.replace('tv.html'); } catch (e) {}
 </script>
 <script>
 (function () {
@@ -722,6 +727,11 @@ window.onerror = function (msg, src, line) {
   document.getElementById('save').addEventListener('click', function () { closeMenu(true); });
   document.getElementById('cancel').addEventListener('click', function () { closeMenu(false); });
   document.getElementById('exit').addEventListener('click', exitApp);
+  // Canlı TV modu: yalnızca yayıncıların .m3u8 akışlarını oynatan hafif sayfa. Seçilen mod hatırlanır.
+  document.getElementById('tvmode').addEventListener('click', function () {
+    try { localStorage.setItem('multiview:mode', 'tv'); } catch (e) {}
+    location.href = 'tv.html';
+  });
   // Embed'ler youtube.com oturumunu kullanır: Premium hesapla giriş yapılmışsa reklam gelmez.
   // Girişten sonra uygulama kapatılıp açılınca Multi View'a dönülür.
   document.getElementById('ytlogin').addEventListener('click', function () {

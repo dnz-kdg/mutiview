@@ -3,12 +3,15 @@
 YouTube ve Twitch canlı yayınlarını aynı ekranda 1, 2, 4, 1+5, 8, 1+7, 9 veya 16 bölmeli olarak gösterir. Ses yalnızca seçili panelden gelir, diğer paneller sessiz oynar. Uygulama tek bir `index.html` dosyası; derleme gerektirmez.
 
 **Canlı adres:** https://dnz-kdg.github.io/mutiview/
+**Canlı TV (m3u8) modu:** https://dnz-kdg.github.io/mutiview/tv.html
 
 ## Dosyalar
 
 | Yol | Ne işe yarar |
 | --- | --- |
 | `index.html` | Uygulamanın kendisi. GitHub Pages bu dosyayı yayınlar. |
+| `tv.html` | Canlı TV modu: yalnızca yayıncıların kendi .m3u8 akışlarını oynatan hafif multi-view. |
+| `vendor/` | `tv.html`'in kullandığı hls.js kopyası (Apache 2.0). CDN'e bağlı kalmamak için repoda. |
 | `webos/` | LG webOS TV paketi. Açıldığında yukarıdaki canlı adresi yükler. |
 
 Sayfa mutlaka http(s) üzerinden açılmalı. Dosyaya çift tıklayarak (`file://`) açınca YouTube **Hata 153** verir. Bilgisayarda yerel deneme için: `python -m http.server 8000` → `http://localhost:8000`.
@@ -21,6 +24,22 @@ Sayfa mutlaka http(s) üzerinden açılmalı. Dosyaya çift tıklayarak (`file:/
 - **Yayın akışı (.m3u8):** Kanalın kendi canlı yayın adresi, örneğin TRT'nin akışı. webOS bunu kendi oynatıcısıyla açar, ses kontrolü de çalışır. Bilgisayarda açılabilmesi için yayıncının başka sitelerden erişime (CORS) izin vermesi gerekir.
 
 Menüdeki **Varsayılan kanallar** düğmesi kutuları hazır listeyle doldurur.
+
+## Canlı TV (m3u8) modu
+
+YouTube embed'leri TV'de ağır kaldığı için `tv.html` yalnızca HLS yayın akışlarıyla çalışır. İçinde 35 Türk kanalı hazır gelir (TRT kanalları, NTV, Halk TV, TGRT Haber, Tele1, A Haber, TVNET, Bloomberg HT, CNBC-e, Kanal D, ATV, NOW, TV8 ve diğerleri). Liste yalnızca yayıncıların kendi sitelerinde kullandıkları resmi akışlardan oluşur, başka sitelerin yeniden yayınları alınmadı.
+
+- **Sessiz paneller en düşük kalitede oynar.** Sesi açık panel ekrandaki boyutuna uygun kaliteyi seçer; 4'lü düzende 1080p yerine 540p civarı gibi. Böylece TV'nin çözücüsü daha az zorlanır. Yalnızca birden fazla kalite sunan yayınlarda (TRT gibi) işe yarar.
+- **Aynı anda video sınırı:** webOS'ta varsayılan 4. Sınırın dışında kalan paneller kanal adını gösterir, OK ile seçince oynar.
+- **Oynatıcı:** varsayılan hls.js. Yayıncı başka sitelerden erişime (CORS) izin vermiyorsa o panel otomatik olarak TV'nin yerleşik oynatıcısına geçer. Menüden tamamen yerleşik oynatıcıya da geçilebilir.
+- Görüntü 20 saniye ilerlemezse panel kendini yeniden bağlar.
+- Bazı kanallar (TRT 2, TRT Spor Yıldız gibi) yalnızca Türkiye'den açılır. Yayıncılar zaman zaman adres değiştirebilir; çalışmayan bir kanal olursa kanal listesinin altındaki kutuya yeni .m3u8 adresini yazabilirsin.
+
+Kumanda: oklar gezinir, **OK** sesi alır, **CH+ / CH−** imleçteki panelin kanalını değiştirir, **Mavi** kanal listesini açar, **Kırmızı** düzen, **Yeşil** büyüt, **Sarı / Geri** menü. Bilgisayarda `+` / `-`, `C`, `L`, `F`, `M`.
+
+İki mod arasında menüdeki **YouTube modu** ve **Canlı TV (m3u8) modu** düğmeleriyle geçilir. Uygulama son kullanılan modu hatırlar, TV'de açınca doğrudan oradan başlar.
+
+Bağlantıyla düzen vermek için: `tv.html#layout=4&ch=trthaber,ntv,halktv,bloomberght`
 
 ## YouTube Premium (reklamsız)
 
