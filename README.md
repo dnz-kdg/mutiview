@@ -1,6 +1,6 @@
 # Multi View
 
-YouTube ve Twitch canlı yayınlarını aynı ekranda 1, 2, 4, 1+5, 8 veya 1+7 bölmeli olarak gösterir. Ses yalnızca seçili panelden gelir, diğer paneller sessiz oynar. Uygulama tek bir `index.html` dosyası; derleme gerektirmez.
+YouTube ve Twitch canlı yayınlarını aynı ekranda 1, 2, 4, 1+5, 8, 1+7, 9 veya 16 bölmeli olarak gösterir. Ses yalnızca seçili panelden gelir, diğer paneller sessiz oynar. Uygulama tek bir `index.html` dosyası; derleme gerektirmez.
 
 **Canlı adres:** https://dnz-kdg.github.io/mutiview/
 
@@ -18,18 +18,21 @@ Sayfa mutlaka http(s) üzerinden açılmalı. Dosyaya çift tıklayarak (`file:/
 - **YouTube kanal kimliği (önerilen):** `UC` ile başlayan 24 karakterlik kimlik ya da `youtube.com/channel/UC...` bağlantısı. Kanalın o anki canlı yayınını açar. Kanal yayını yenilese de çalışmaya devam eder. Kimliği bulmak için kanal sayfasında açıklamaya tıkla, en alttaki **Kanalı paylaş → Kanal kimliğini kopyala** adımını izle.
 - **YouTube video kimliği ya da bağlantısı:** Tek bir yayını açar. Kanal yayını yeniden başlatınca kimlik değişir, panel de çalışmaz hale gelir.
 - **Twitch:** `twitch:kanaladı` ya da `twitch.tv/kanaladı`.
+- **Yayın akışı (.m3u8):** Kanalın kendi canlı yayın adresi, örneğin TRT'nin akışı. webOS bunu kendi oynatıcısıyla açar, ses kontrolü de çalışır. Bilgisayarda açılabilmesi için yayıncının başka sitelerden erişime (CORS) izin vermesi gerekir.
+
+Menüdeki **Varsayılan kanallar** düğmesi kutuları hazır listeyle doldurur.
 
 ## Kumanda
 
 - **Ok tuşları:** paneller arasında gezer (mavi çerçeve).
 - **OK:** sesi bu panele alır (yeşil çerçeve). Aynı panelde tekrar basınca paneli büyütür ya da küçültür.
-- **1–8:** sesi doğrudan o panele alır.
+- **1–9:** sesi doğrudan o panele alır.
 - **Kırmızı:** düzeni değiştirir.
 - **Yeşil:** paneli büyütür ya da küçültür.
 - **Sarı / Geri:** ayarlar menüsünü açar. Panel büyütülmüşse önce küçültür.
 - Magic Remote imleciyle panele tıklamak da sesi o panele alır.
 
-Bilgisayarda klavyeyle aynı işler için: oklar, Enter, 1–8, `L` (düzen), `F` (büyüt), `M` veya Esc (menü).
+Bilgisayarda klavyeyle aynı işler için: oklar, Enter, 1–9, `L` (düzen), `F` (büyüt), `M` veya Esc (menü).
 
 Ayarlar tarayıcıda (`localStorage`) saklanır. Bir düzeni adres üzerinden de verebilirsin:
 `https://dnz-kdg.github.io/mutiview/#layout=4&src=VIDEOID|twitch:kanal|https://youtu.be/VIDEOID`

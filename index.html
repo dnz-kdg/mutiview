@@ -109,18 +109,19 @@
     <h2>Düzen</h2>
     <div class="row" id="layouts"></div>
     <h2>Kaynaklar</h2>
-    <p class="help">YouTube <b>kanal kimliği</b> (UC ile başlar, önerilen: yayın yenilense de çalışır), kanal bağlantısı, video bağlantısı ya da video kimliği, <b>twitch:kanaladı</b> veya twitch.tv bağlantısı yazabilirsin. Boş bıraktığın kutu siyah kalır.</p>
+    <p class="help">YouTube <b>kanal kimliği</b> (UC ile başlar, önerilen: yayın yenilense de çalışır), kanal bağlantısı, video bağlantısı ya da video kimliği, <b>twitch:kanaladı</b> veya twitch.tv bağlantısı ya da kanalın <b>.m3u8</b> yayın akışı adresini yazabilirsin. Boş bıraktığın kutu siyah kalır.</p>
     <div id="slots"></div>
     <div class="row actions">
       <button class="btn" id="save">Kaydet</button>
       <button class="btn" id="cancel">Vazgeç</button>
+      <button class="btn" id="reset">Varsayılan kanallar</button>
       <button class="btn" id="exit">Uygulamadan çık</button>
     </div>
     <h2>Kumanda</h2>
     <p class="help">
       <span class="key">◀ ▲ ▼ ▶</span> paneller arasında gez ·
       <span class="key">OK</span> sesi bu panele al (tekrar basınca büyüt / küçült) ·
-      <span class="key">1–8</span> doğrudan o panelin sesi ·
+      <span class="key">1–9</span> doğrudan o panelin sesi ·
       <span class="key k-red">Kırmızı</span> düzeni değiştir ·
       <span class="key k-green">Yeşil</span> büyüt / küçült ·
       <span class="key k-yellow">Sarı</span> veya <span class="key">Geri</span> bu menü
@@ -133,18 +134,23 @@
   'use strict';
 
   // ---------- Ayarlar ----------
-  // Varsayılan kanallar multitv projesinden alındı; YouTube canlı yayın kimlikleri zamanla değişebilir.
+  // Varsayılan kanallar. Video kimlikleri yayın yenilenince değişir; mümkünse kanal kimliği (UC...) kullan.
   var DEFAULT_SLOTS = [
-    { name: 'NTV',          src: 'pqq5c6k70kk' },
-    { name: 'Habertürk',    src: '8xSMAv3w1Sk' },
-    { name: 'Haber Global', src: '6BX-NUzBSp8' },
-    { name: 'TRT Haber',    src: 'og4Bl9zD6l8' },
-    { name: 'Halk TV',      src: '-HJwrahoMsQ' },
-    { name: 'Sözcü TV',     src: 'ztmY_cCtUl0' },
-    { name: 'TELE 1',       src: 'cKRg0a8yArE' },
-    { name: 'TV 100',       src: 'P5BOJKmWaaI' }
+    { name: 'NTV',               src: 'pqq5c6k70kk' },
+    { name: 'CNN Türk',          src: '6N8_r2uwLEc' },
+    { name: 'Sözcü TV',          src: 'ztmY_cCtUl0' },
+    { name: 'Habertürk',         src: 'RNVNlJSUFoE' },
+    { name: 'Haber Global',      src: 'EqoCJ8BPxtE' },
+    { name: 'TV 100',            src: '4WSvLRk83-c' },
+    { name: 'TRT Haber',         src: '' },
+    { name: 'beIN Sports Haber', src: 'i7UpPgxfZZ8' },
+    { name: 'Bloomberg HT',      src: '' },
+    { name: 'CNBC-e',            src: 'aZ3ycSbSYBA' },
+    { name: 'Ulusal Kanal',      src: 'Gcxkjxhbhk8' },
+    { name: 'TGRT Haber',        src: '' },
+    { name: 'TVNET',             src: 'Z5bqy4gwEmc' }
   ];
-  var MAX_SLOTS = 8;
+  var MAX_SLOTS = 16;
 
   // Her hücre: [sütun, satır, sütunGenişliği, satırYüksekliği]
   var LAYOUTS = {
@@ -153,9 +159,17 @@
     '4':   { label: '4',     cols: 2, rows: 2, cells: [[1,1,1,1],[2,1,1,1],[1,2,1,1],[2,2,1,1]] },
     '1+5': { label: '1 + 5', cols: 3, rows: 3, cells: [[1,1,2,2],[3,1,1,1],[3,2,1,1],[1,3,1,1],[2,3,1,1],[3,3,1,1]] },
     '8':   { label: '8',     cols: 4, rows: 2, cells: [[1,1,1,1],[2,1,1,1],[3,1,1,1],[4,1,1,1],[1,2,1,1],[2,2,1,1],[3,2,1,1],[4,2,1,1]] },
-    '1+7': { label: '1 + 7', cols: 4, rows: 4, cells: [[1,1,3,3],[4,1,1,1],[4,2,1,1],[4,3,1,1],[1,4,1,1],[2,4,1,1],[3,4,1,1],[4,4,1,1]] }
+    '1+7': { label: '1 + 7', cols: 4, rows: 4, cells: [[1,1,3,3],[4,1,1,1],[4,2,1,1],[4,3,1,1],[1,4,1,1],[2,4,1,1],[3,4,1,1],[4,4,1,1]] },
+    '9':   { label: '9',     cols: 3, rows: 3, cells: grid(3, 3) },
+    '16':  { label: '16',    cols: 4, rows: 4, cells: grid(4, 4) }
   };
-  var LAYOUT_ORDER = ['1', '2', '4', '1+5', '8', '1+7'];
+  var LAYOUT_ORDER = ['1', '2', '4', '1+5', '8', '1+7', '9', '16'];
+
+  function grid(cols, rows) {
+    var cells = [];
+    for (var r = 1; r <= rows; r++) for (var c = 1; c <= cols; c++) cells.push([c, r, 1, 1]);
+    return cells;
+  }
 
   var KEY = {
     LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13,
@@ -224,6 +238,7 @@
     if ((m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([\w-]{11})/i))) {
       return { kind: 'youtube', id: m[1] };
     }
+    if (/^https?:\/\/.*\.m3u8(\?|#|$)/i.test(s)) return { kind: 'hls', id: s };
     if (/^https?:\/\//i.test(s)) return { kind: 'iframe', id: s };
     return { kind: 'invalid', id: s };
   }
@@ -255,6 +270,19 @@
     return twitchReady;
   }
 
+  var hlsReady = null;
+  function loadHlsJs() {
+    if (!hlsReady) {
+      hlsReady = new Promise(function (resolve, reject) {
+        var tag = document.createElement('script');
+        tag.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+        tag.onload = resolve; tag.onerror = reject;
+        document.head.appendChild(tag);
+      });
+    }
+    return hlsReady;
+  }
+
   var YT_ERRORS = {
     2: 'Geçersiz video kimliği.',
     5: 'Bu video HTML5 oynatıcıda açılamıyor.',
@@ -266,16 +294,24 @@
 
   // Her oynatıcı aynı arayüzü sunar: setMuted(bool), destroy()
   function createPlayer(mount, src, showMsg) {
-    var wantMuted = true, api = null, dead = false;
+    var wantMuted = true, api = null, dead = false, cleanup = null;
     var ctl = {
       setMuted: function (m) { wantMuted = m; apply(); },
-      destroy: function () { dead = true; try { api && api.destroy && api.destroy(); } catch (e) {} mount.innerHTML = ''; }
+      destroy: function () {
+        dead = true;
+        try { api && api.destroy && api.destroy(); } catch (e) {}
+        try { cleanup && cleanup(); } catch (e) {}
+        mount.innerHTML = '';
+      }
     };
     function apply() {
       if (!api || dead) return;
       try {
         if (src.kind === 'youtube') {
           if (wantMuted) api.mute(); else { api.unMute(); api.setVolume(100); }
+        } else if (src.kind === 'hls') {
+          api.muted = wantMuted;
+          if (!wantMuted) { var pr = api.play(); if (pr && pr.catch) pr.catch(function () {}); }
         } else if (src.kind === 'twitch') {
           api.setMuted(wantMuted);
           if (!wantMuted) api.setVolume(1);
@@ -328,6 +364,30 @@
           p.addEventListener(Twitch.Player.READY, function () { api = p; apply(); });
         } catch (e) { showMsg('Twitch oynatıcısı başlatılamadı.'); }
       }, function () { showMsg('Twitch oynatıcısı yüklenemedi.'); });
+    } else if (src.kind === 'hls') {
+      // Kanalın kendi canlı yayın akışı (.m3u8). webOS bunu yerleşik oynatıcıyla açar, diğer tarayıcılarda hls.js kullanılır.
+      var v = document.createElement('video');
+      v.className = 'player';
+      v.muted = true; v.autoplay = true; v.playsInline = true;
+      mount.appendChild(v);
+      var failed = function () { showMsg('Yayın akışı açılamadı. Adres yanlış olabilir ya da yayıncı başka sitelerden erişimi kapatmış olabilir.'); };
+      v.addEventListener('error', failed);
+      cleanup = function () { v.removeAttribute('src'); v.load(); };
+      if (v.canPlayType('application/vnd.apple.mpegurl')) {
+        v.src = src.id;
+        api = v; apply();
+      } else {
+        loadHlsJs().then(function () {
+          if (dead) return;
+          if (!window.Hls || !Hls.isSupported()) { showMsg('Bu tarayıcı yayın akışını oynatamıyor.'); return; }
+          var h = new Hls();
+          h.on(Hls.Events.ERROR, function (e, d) { if (d.fatal) failed(); });
+          h.loadSource(src.id);
+          h.attachMedia(v);
+          cleanup = function () { h.destroy(); };
+          api = v; apply();
+        }, function () { showMsg('Yayın oynatıcısı yüklenemedi.'); });
+      }
     } else if (src.kind === 'iframe') {
       // Ses kontrolü olmayan genel gömme; her zaman kendi sesiyle çalışır
       var f = document.createElement('iframe');
@@ -555,6 +615,13 @@
   document.getElementById('save').addEventListener('click', function () { closeMenu(true); });
   document.getElementById('cancel').addEventListener('click', function () { closeMenu(false); });
   document.getElementById('exit').addEventListener('click', exitApp);
+  document.getElementById('reset').addEventListener('click', function () {
+    slotsEl.querySelectorAll('.slot').forEach(function (row, i) {
+      var d = DEFAULT_SLOTS[i] || { name: '', src: '' };
+      row.querySelector('.name').value = d.name;
+      row.querySelector('.src').value = d.src;
+    });
+  });
 
   function menuFocusables() {
     return Array.prototype.slice.call(menu.querySelectorAll('button, input'));
@@ -611,7 +678,7 @@
     else if (k === KEY.UP) moveCursor('up');
     else if (k === KEY.DOWN) moveCursor('down');
     else if (k === KEY.OK) selectAudio(cursor);
-    else if (k >= 49 && k <= 56) { cursor = k - 49; selectAudio(cursor); }
+    else if (k >= 49 && k <= 57) { cursor = k - 49; selectAudio(cursor); }
     else if (k === KEY.RED || k === 76 /* L */) cycleLayout();
     else if (k === KEY.GREEN || k === 70 /* F */) toggleZoom(zoomed >= 0 ? zoomed : cursor);
     else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) {
